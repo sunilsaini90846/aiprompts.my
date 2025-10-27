@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompts Manager</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@10.12.16/dist/framer-motion.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+
+        window.FirebaseApp = { initializeApp, getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged };
+    </script>
+    <style>
+        /* Include all the CSS from App.css here */
+        :root {
+          --primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          --secondary-bg: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          --accent-bg: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+          --dark-bg: #1a1a2e;
+          --card-bg: rgba(255, 255, 255, 0.1);
+          --card-hover: rgba(255, 255, 255, 0.2);
+          --text-primary: #ffffff;
+          --text-secondary: rgba(255, 255, 255, 0.8);
+          --border-radius: 20px;
+          --blur: 10px;
+          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes liquidFloat {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          33% { transform: translateY(-10px) rotate(1deg); }
+          66% { transform: translateY(5px) rotate(-1deg); }
+        }
+
+        @keyframes liquidPulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        @keyframes liquidGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
+          50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.6); }
+        }
+
+        @keyframes lightingFlow {
+          0% { transform: translateX(-100%) skewX(-15deg); }
+          100% { transform: translateX(200%) skewX(-15deg); }
+        }
+
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+            'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+            sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          background: var(--primary-bg);
+          min-height: 100vh;
+          overflow-x: hidden;
+        }
+
+        .app {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        }
+
+        .app::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background:
+            radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+          animation: liquidFloat 20s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .dashboard {
+          flex: 1;
+          padding: 2rem;
+          position: relative;
+          z-index: 1;
+          backdrop-filter: blur(var(--blur));
+        }
+
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding: 1.5rem;
+          background: var(--card-bg);
+          border-radius: var(--border-radius);
+          backdrop-filter: blur(var(--blur));
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          animation: liquidGlow 3s ease-in-out infinite;
+        }
+
+        .title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          background: var(--accent-bg);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin: 0;
+          animation: liquidPulse 4s ease-in-out infinite;
+        }
+
+        .header-actions {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .user-name {
+          color: var(--text-primary);
+          font-weight: 500;
+          font-size: 0.9rem;
+        }
+
+        .auth-loading {
+          color: var(--text-secondary);
+          font-size: 0.9rem;
+        }
+
+        .auth-button, .new-note-button {
+          padding: 0.8rem 1.5rem;
+          border: none;
+          border-radius: var(--border-radius);
+          font-weight: 600;
+          cursor: pointer;
+          transition: var(--transition);
+          background: var(--secondary-bg);
+          color: var(--text-primary);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .auth-button::before, .new-note-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.5s;
+        }
+
+        .auth-button:hover::before, .new-note-button:hover::before {
+          left: 100%;
+        }
+
+        .auth-button:hover, .new-note-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .main-content {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .notes-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        .note-card {
+          background: var(--card-bg);
+          backdrop-filter: blur(var(--blur));
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: var(--border-radius);
+          padding: 1.5rem;
+          cursor: pointer;
+          transition: var(--transition);
+          position: relative;
+          overflow: hidden;
+          animation: liquidPulse 5s ease-in-out infinite;
+        }
+
+        .note-card::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: var(--accent-bg);
+          opacity: 0;
+          transition: opacity 0.3s;
+          border-radius: 50%;
+          transform: scale(0);
+        }
+
+        .note-card:hover::before {
+          opacity: 0.1;
+          transform: scale(1);
+        }
+
+        .note-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .note-card h3 {
+          margin: 0 0 0.5rem 0;
+          color: var(--text-primary);
+          font-size: 1.3rem;
+          font-weight: 600;
+        }
+
+        .note-card p {
+          margin: 0 0 0.5rem 0;
+          color: var(--text-secondary);
+          font-size: 0.9rem;
+        }
+
+        .date {
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 4rem 2rem;
+          background: var(--card-bg);
+          backdrop-filter: blur(var(--blur));
+          border-radius: var(--border-radius);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          animation: liquidGlow 4s ease-in-out infinite;
+        }
+
+        .empty-state h2 {
+          color: var(--text-primary);
+          margin-bottom: 1rem;
+          font-size: 2rem;
+        }
+
+        .empty-state p {
+          color: var(--text-secondary);
+          margin-bottom: 2rem;
+          font-size: 1.1rem;
+        }
+
+        .cta-button {
+          padding: 1rem 2rem;
+          background: var(--accent-bg);
+          color: var(--text-primary);
+          border: none;
+          border-radius: var(--border-radius);
+          font-size: 1.1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: var(--transition);
+          animation: liquidPulse 3s ease-in-out infinite;
+        }
+
+        .cta-button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .prompt-editor {
+          background: var(--card-bg);
+          backdrop-filter: blur(var(--blur));
+          border-radius: var(--border-radius);
+          padding: 2rem;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          animation: liquidGlow 3s ease-in-out infinite;
+        }
+
+        .editor-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .title-input {
+          flex: 1;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: var(--border-radius);
+          color: var(--text-primary);
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-right: 1rem;
+          transition: var(--transition);
+        }
+
+        .title-input:focus {
+          outline: none;
+          border-color: rgba(255, 255, 255, 0.6);
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .editor-actions {
+          display: flex;
+          gap: 1rem;
+        }
+
+        .cancel-button, .save-button {
+          padding: 0.8rem 1.5rem;
+          border: none;
+          border-radius: var(--border-radius);
+          font-weight: 600;
+          cursor: pointer;
+          transition: var(--transition);
+        }
+
+        .cancel-button {
+          background: rgba(255, 255, 255, 0.2);
+          color: var(--text-primary);
+        }
+
+        .save-button {
+          background: var(--accent-bg);
+          color: var(--text-primary);
+        }
+
+        .cancel-button:hover, .save-button:hover {
+          transform: translateY(-2px);
+        }
+
+        .prompts-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .prompt-item {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: var(--border-radius);
+          padding: 1.5rem;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          animation: liquidPulse 6s ease-in-out infinite;
+        }
+
+        .prompt-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .prompt-title-input {
+          flex: 1;
+          padding: 0.8rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: var(--border-radius);
+          color: var(--text-primary);
+          font-weight: 500;
+          margin-right: 1rem;
+          transition: var(--transition);
+        }
+
+        .prompt-title-input:focus {
+          outline: none;
+          border-color: rgba(255, 255, 255, 0.6);
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .prompt-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .copy-button, .delete-button {
+          padding: 0.5rem;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: var(--transition);
+          background: rgba(255, 255, 255, 0.2);
+          color: var(--text-primary);
+          width: 35px;
+          height: 35px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1rem;
+        }
+
+        .copy-button:hover {
+          background: var(--accent-bg);
+          transform: scale(1.1);
+        }
+
+        .delete-button:hover {
+          background: #ff4757;
+          transform: scale(1.1);
+        }
+
+        .prompt-content {
+          width: 100%;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: var(--border-radius);
+          color: var(--text-primary);
+          font-family: 'Courier New', monospace;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          resize: vertical;
+          transition: var(--transition);
+        }
+
+        .prompt-content:focus {
+          outline: none;
+          border-color: rgba(255, 255, 255, 0.6);
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .add-prompt-button {
+          width: 100%;
+          padding: 1rem;
+          background: var(--secondary-bg);
+          color: var(--text-primary);
+          border: none;
+          border-radius: var(--border-radius);
+          font-size: 1.1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: var(--transition);
+          animation: liquidPulse 4s ease-in-out infinite;
+        }
+
+        .add-prompt-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .footer {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          height: 25px;
+          z-index: 1000;
+        }
+
+        .copyright-strip {
+          height: 100%;
+          background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
+          background-size: 400% 400%;
+          animation: gradientShift 8s ease infinite;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .lighting-animation {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.8) 20%,
+            rgba(255, 255, 255, 0.4) 40%,
+            transparent 60%,
+            rgba(255, 255, 255, 0.6) 80%,
+            transparent 100%
+          );
+          animation: lightingFlow 3s linear infinite;
+        }
+
+        .copyright-text {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 0.7rem;
+          font-weight: 500;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          z-index: 1;
+          position: relative;
+        }
+
+        @media (max-width: 768px) {
+          .dashboard {
+            padding: 1rem;
+          }
+
+          .header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+          }
+
+          .title {
+            font-size: 2rem;
+          }
+
+          .header-actions {
+            flex-direction: column;
+            width: 100%;
+          }
+
+          .auth-button, .new-note-button {
+            width: 100%;
+          }
+
+          .notes-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+
+          .prompt-editor {
+            padding: 1rem;
+          }
+
+          .editor-header {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .title-input {
+            margin-right: 0;
+            font-size: 1.2rem;
+          }
+
+          .editor-actions {
+            width: 100%;
+            justify-content: space-between;
+          }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion } = window.FramerMotion;
+        const { initializeApp, getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = window.FirebaseApp;
+
+        // Firebase configuration (replace with your actual config)
+        const firebaseConfig = {
+            apiKey: "demo-key",
+            authDomain: "demo.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+        function App() {
+            const [promptNotes, setPromptNotes] = useState([]);
+            const [user, setUser] = useState(null);
+            const [currentNote, setCurrentNote] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
+
+            useEffect(() => {
+                const unsubscribe = onAuthStateChanged(auth, (user) => {
+                    setUser(user);
+                    setAuthLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            useEffect(() => {
+                const storageKey = user ? `ai-prompt-notes-${user?.uid}` : 'ai-prompt-notes';
+                const savedNotes = localStorage.getItem(storageKey);
+
+                if (savedNotes) {
+                    try {
+                        const parsedNotes = JSON.parse(savedNotes).map(note => ({
+                            ...note,
+                            createdAt: new Date(note.createdAt),
+                            updatedAt: new Date(note.updatedAt),
+                            prompts: note.prompts.map(prompt => ({
+                                ...prompt,
+                                createdAt: new Date(prompt.createdAt)
+                            }))
+                        }));
+                        setPromptNotes(parsedNotes);
+                    } catch (error) {
+                        console.error('Error loading saved notes:', error);
+                    }
+                } else {
+                    setPromptNotes([]);
+                }
+            }, [user]);
+
+            const saveToStorage = (notes) => {
+                const storageKey = user ? `ai-prompt-notes-${user.uid}` : 'ai-prompt-notes';
+                localStorage.setItem(storageKey, JSON.stringify(notes));
+            };
+
+            const createNewNote = () => {
+                const newNote = {
+                    id: Date.now().toString(),
+                    title: '',
+                    prompts: [],
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+                setCurrentNote(newNote);
+            };
+
+            const saveNote = (note) => {
+                const updatedNotes = [...promptNotes];
+                const existingIndex = updatedNotes.findIndex(n => n.id === note.id);
+
+                if (existingIndex >= 0) {
+                    updatedNotes[existingIndex] = { ...note, updatedAt: new Date() };
+                } else {
+                    updatedNotes.push(note);
+                }
+
+                setPromptNotes(updatedNotes);
+                saveToStorage(updatedNotes);
+                setCurrentNote(null);
+            };
+
+            const copyToClipboard = (text) => {
+                navigator.clipboard.writeText(text);
+            };
+
+            const handleGoogleSignIn = async () => {
+                try {
+                    setAuthLoading(true);
+                    await signInWithPopup(auth, googleProvider);
+                } catch (error) {
+                    console.error('Sign in error:', error);
+                    setAuthLoading(false);
+                }
+            };
+
+            const handleSignOut = async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error('Sign out error:', error);
+                }
+            };
+
+            return React.createElement('div', { className: 'app' },
+                React.createElement(motion.div, {
+                    className: 'dashboard',
+                    initial: { opacity: 0, y: 20 },
+                    animate: { opacity: 1, y: 0 },
+                    transition: { duration: 0.6 }
+                },
+                    React.createElement('header', { className: 'header' },
+                        React.createElement('h1', { className: 'title' }, 'AI Prompts Manager'),
+                        React.createElement('div', { className: 'header-actions' },
+                            authLoading ?
+                                React.createElement('div', { className: 'auth-loading' }, 'Loading...') :
+                                user ?
+                                    React.createElement('div', { className: 'user-info' },
+                                        React.createElement('span', { className: 'user-name' }, `Hi, ${user.displayName || user.email}`),
+                                        React.createElement('button', { className: 'auth-button', onClick: handleSignOut }, 'Sign Out')
+                                    ) :
+                                    React.createElement('button', { className: 'auth-button', onClick: handleGoogleSignIn }, 'Sign In with Google'),
+                            React.createElement('button', { className: 'new-note-button', onClick: createNewNote }, 'New Note')
+                        )
+                    ),
+                    React.createElement('main', { className: 'main-content' },
+                        !currentNote ?
+                            React.createElement('div', { className: 'notes-grid' },
+                                promptNotes.length === 0 ?
+                                    React.createElement('div', { className: 'empty-state' },
+                                        React.createElement('h2', null, 'No prompts yet'),
+                                        React.createElement('p', null, 'Create your first AI prompt note to get started'),
+                                        React.createElement('button', { className: 'cta-button', onClick: createNewNote }, 'Create First Note')
+                                    ) :
+                                    promptNotes.map(note =>
+                                        React.createElement(motion.div, {
+                                            key: note.id,
+                                            className: 'note-card',
+                                            whileHover: { scale: 1.02 },
+                                            onClick: () => setCurrentNote(note)
+                                        },
+                                            React.createElement('h3', null, note.title || 'Untitled'),
+                                            React.createElement('p', null, `${note.prompts.length} prompt${note.prompts.length !== 1 ? 's' : ''}`),
+                                            React.createElement('span', { className: 'date' }, note.updatedAt.toLocaleDateString())
+                                        )
+                                    )
+                            ) :
+                            React.createElement(PromptEditor, {
+                                note: currentNote,
+                                onSave: saveNote,
+                                onCancel: () => setCurrentNote(null),
+                                onCopy: copyToClipboard
+                            })
+                    )
+                ),
+                React.createElement('footer', { className: 'footer' },
+                    React.createElement('div', { className: 'copyright-strip' },
+                        React.createElement('div', { className: 'lighting-animation' }),
+                        React.createElement('span', { className: 'copyright-text' }, '© 2025 AI Prompts Manager. All rights reserved.')
+                    )
+                )
+            );
+        }
+
+        function PromptEditor({ note, onSave, onCancel, onCopy }) {
+            const [title, setTitle] = useState(note.title);
+            const [prompts, setPrompts] = useState(note.prompts);
+
+            const addPrompt = () => {
+                const newPrompt = {
+                    id: Date.now().toString(),
+                    title: '',
+                    content: '',
+                    createdAt: new Date()
+                };
+                setPrompts([...prompts, newPrompt]);
+            };
+
+            const updatePrompt = (id, field, value) => {
+                setPrompts(prompts.map(p =>
+                    p.id === id ? { ...p, [field]: value } : p
+                ));
+            };
+
+            const removePrompt = (id) => {
+                setPrompts(prompts.filter(p => p.id !== id));
+            };
+
+            const handleSave = () => {
+                const updatedNote = {
+                    ...note,
+                    title,
+                    prompts,
+                    updatedAt: new Date()
+                };
+                onSave(updatedNote);
+            };
+
+            return React.createElement(motion.div, {
+                className: 'prompt-editor',
+                initial: { opacity: 0, x: 20 },
+                animate: { opacity: 1, x: 0 },
+                exit: { opacity: 0, x: -20 }
+            },
+                React.createElement('div', { className: 'editor-header' },
+                    React.createElement('input', {
+                        type: 'text',
+                        placeholder: 'Note Title',
+                        value: title,
+                        onChange: (e) => setTitle(e.target.value),
+                        className: 'title-input'
+                    }),
+                    React.createElement('div', { className: 'editor-actions' },
+                        React.createElement('button', { className: 'cancel-button', onClick: onCancel }, 'Cancel'),
+                        React.createElement('button', { className: 'save-button', onClick: handleSave }, 'Save')
+                    )
+                ),
+                React.createElement('div', { className: 'prompts-list' },
+                    prompts.map((prompt, index) =>
+                        React.createElement(motion.div, {
+                            key: prompt.id,
+                            className: 'prompt-item',
+                            initial: { opacity: 0, y: 10 },
+                            animate: { opacity: 1, y: 0 },
+                            transition: { delay: index * 0.1 }
+                        },
+                            React.createElement('div', { className: 'prompt-header' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'Prompt Title',
+                                    value: prompt.title,
+                                    onChange: (e) => updatePrompt(prompt.id, 'title', e.target.value),
+                                    className: 'prompt-title-input'
+                                }),
+                                React.createElement('div', { className: 'prompt-actions' },
+                                    React.createElement('button', {
+                                        className: 'copy-button',
+                                        onClick: () => onCopy(prompt.content),
+                                        title: 'Copy to clipboard'
+                                    }, '📋'),
+                                    React.createElement('button', {
+                                        className: 'delete-button',
+                                        onClick: () => removePrompt(prompt.id),
+                                        title: 'Delete prompt'
+                                    }, '🗑️')
+                                )
+                            ),
+                            React.createElement('textarea', {
+                                placeholder: 'Enter your AI prompt here...',
+                                value: prompt.content,
+                                onChange: (e) => updatePrompt(prompt.id, 'content', e.target.value),
+                                className: 'prompt-content',
+                                rows: 4
+                            })
+                        )
+                    )
+                ),
+                React.createElement('button', { className: 'add-prompt-button', onClick: addPrompt }, '+ Add Prompt')
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
