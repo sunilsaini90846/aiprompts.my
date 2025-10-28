@@ -38,9 +38,9 @@
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
   /* Removed animation for better performance */
   pointer-events: none;
   z-index: 0;
@@ -543,8 +543,7 @@
 
 .copyright-strip {
   height: 25px;
-  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
-  background-size: 400% 400%;
+  background: linear-gradient(90deg, #000000, #1a1a1a, #000000);
   /* Removed animation */
   display: flex;
   align-items: center;
@@ -564,10 +563,10 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.8) 20%,
-    rgba(255, 255, 255, 0.4) 40%,
+    rgba(255, 255, 255, 0.3) 20%,
+    rgba(255, 255, 255, 0.1) 40%,
     transparent 60%,
-    rgba(255, 255, 255, 0.6) 80%,
+    rgba(255, 255, 255, 0.2) 80%,
     transparent 100%
   );
   /* Removed animation */
