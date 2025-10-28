@@ -18,7 +18,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "deploy": "npm run build && firebase deploy",
+    "deploy:hosting": "npm run build && firebase deploy --only hosting"
   },
   "eslintConfig": {
     "extends": [
@@ -39,6 +41,7 @@
     ]
   },
   "devDependencies": {
-    "@types/jest": "^27.5.2"
+    "@types/jest": "^27.5.2",
+    "firebase-tools": "^13.0.0"
   }
 }

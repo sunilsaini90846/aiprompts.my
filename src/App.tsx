@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { auth, signInWithGoogle, signOutUser } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import './App.css';
@@ -117,79 +116,125 @@ function App() {
 
   return (
     <div className="app">
-      <motion.div
-        className="dashboard"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <header className="header">
-          <h1 className="title">AI Prompts Manager</h1>
-          <div className="header-actions">
-            {authLoading ? (
-              <div className="auth-loading">Loading...</div>
-            ) : user ? (
-              <div className="user-info">
-                <span className="user-name">Hi, {user.displayName || user.email}</span>
-                <button className="auth-button" onClick={handleSignOut}>
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <button className="auth-button" onClick={handleGoogleSignIn}>
-                Sign In with Google
-              </button>
-            )}
-            <button className="new-note-button" onClick={createNewNote}>
-              New Note
-            </button>
-          </div>
-        </header>
+      {/* Logo in top-left corner */}
+      <h1 className="title">aiprompts.my</h1>
 
-        <main className="main-content">
-          {!currentNote ? (
-            <div className="notes-grid">
-              {promptNotes.length === 0 ? (
-                <div className="empty-state">
-                  <h2>No prompts yet</h2>
-                  <p>Create your first AI prompt note to get started</p>
-                  <button className="cta-button" onClick={createNewNote}>
-                    Create First Note
-                  </button>
-                </div>
-              ) : (
-                promptNotes.map((note) => (
-                  <motion.div
-                    key={note.id}
-                    className="note-card"
-                    whileHover={{ scale: 1.02 }}
-                    onClick={() => setCurrentNote(note)}
-                  >
-                    <h3>{note.title || 'Untitled'}</h3>
-                    <p>{note.prompts.length} prompt{note.prompts.length !== 1 ? 's' : ''}</p>
-                    <span className="date">
-                      {note.updatedAt.toLocaleDateString()}
-                    </span>
-                  </motion.div>
-                ))
-              )}
+      <div className="dashboard">
+        {/* Small corner login button */}
+        <div className="login-corner">
+          {authLoading ? (
+            <div className="auth-loading" style={{ fontSize: '0.8rem' }}>Loading...</div>
+          ) : user ? (
+            <div className="user-info" style={{ gap: '0.5rem' }}>
+              <span className="user-name" style={{ fontSize: '0.7rem' }}>
+                Hi, {user.displayName?.split(' ')[0] || user.email}
+              </span>
+              <button className="login-button-small" onClick={handleSignOut}>
+                Sign Out
+              </button>
             </div>
           ) : (
+            <button className="login-button-small" onClick={handleGoogleSignIn}>
+              Sign In
+            </button>
+          )}
+        </div>
+
+        {/* Data warning for non-logged in users */}
+        {!user && !authLoading && (
+          <div className="data-warning">
+            ⚠️ Sign in to save your data permanently
+          </div>
+        )}
+
+        <div className="sidebar">
+          <button className="new-note-button" onClick={createNewNote} style={{ marginBottom: '1rem', width: '100%' }}>
+            + New Note
+          </button>
+
+          <div className="sidebar-list">
+            {promptNotes.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                No prompts yet
+              </div>
+            ) : (
+              promptNotes.map((note) => (
+                <div
+                  key={note.id}
+                  className={`sidebar-item ${currentNote?.id === note.id ? 'active' : ''}`}
+                  onClick={() => setCurrentNote(note)}
+                >
+                  <h4>{note.title || 'Untitled'}</h4>
+                  <p>{note.prompts.length} prompt{note.prompts.length !== 1 ? 's' : ''}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="main-content">
+          {currentNote ? (
             <PromptEditor
               note={currentNote}
               onSave={saveNote}
               onCancel={() => setCurrentNote(null)}
               onCopy={copyToClipboard}
             />
+          ) : (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: 'var(--text-secondary)',
+              textAlign: 'center'
+            }}>
+              <div>
+                <h2 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Select a note from the sidebar</h2>
+                <p>Choose a prompt collection to view and edit its contents</p>
+              </div>
+            </div>
           )}
-        </main>
-      </motion.div>
+        </div>
+      </div>
 
       <footer className="footer">
+        <div className="footer-content">
+          <div className="trust-section">
+            <div className="trust-item">
+              <span className="trust-icon">🔒</span>
+              <span className="trust-text">Secure & Private</span>
+            </div>
+            <div className="trust-item">
+              <span className="trust-icon">⚡</span>
+              <span className="trust-text">Fast & Reliable</span>
+            </div>
+            <div className="trust-item">
+              <span className="trust-icon">🆓</span>
+              <span className="trust-text">Free to Use</span>
+            </div>
+          </div>
+
+          <div className="contact-section">
+            <div className="contact-item">
+              <span className="contact-label">Support:</span>
+              <a href="mailto:support@aiprompts.my" className="contact-link">
+                support@aiprompts.my
+              </a>
+            </div>
+            <div className="contact-item">
+              <span className="contact-label">Contact:</span>
+              <a href="mailto:hello@aiprompts.my" className="contact-link">
+                hello@aiprompts.my
+              </a>
+            </div>
+          </div>
+        </div>
+
         <div className="copyright-strip">
           <div className="lighting-animation"></div>
           <span className="copyright-text">
-            © 2025 AI Prompts Manager. All rights reserved.
+            © 2025 aiprompts.my. All rights reserved.
           </span>
         </div>
       </footer>
@@ -239,12 +284,7 @@ function PromptEditor({ note, onSave, onCancel, onCopy }: PromptEditorProps) {
   };
 
   return (
-    <motion.div
-      className="prompt-editor"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-    >
+    <div className="prompt-editor">
       <div className="editor-header">
         <input
           type="text"
@@ -264,13 +304,10 @@ function PromptEditor({ note, onSave, onCancel, onCopy }: PromptEditorProps) {
       </div>
 
       <div className="prompts-list">
-        {prompts.map((prompt, index) => (
-          <motion.div
+        {prompts.map((prompt) => (
+          <div
             key={prompt.id}
             className="prompt-item"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
           >
             <div className="prompt-header">
               <input
@@ -304,14 +341,14 @@ function PromptEditor({ note, onSave, onCancel, onCopy }: PromptEditorProps) {
               className="prompt-content"
               rows={4}
             />
-          </motion.div>
+          </div>
         ))}
       </div>
 
       <button className="add-prompt-button" onClick={addPrompt}>
         + Add Prompt
       </button>
-    </motion.div>
+    </div>
   );
 }
 

@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "domains-71eab"
+  },
+  "targets": {
+    "domains-71eab": {
+      "hosting": {
+        "aiprompts-my": [
+          "aiprompts-my"
+        ]
+      }
+    }
+  }
+}
+
