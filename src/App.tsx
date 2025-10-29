@@ -22,7 +22,6 @@ function App() {
   const [promptNotes, setPromptNotes] = useState<PromptNote[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [currentNote, setCurrentNote] = useState<PromptNote | null>(null);
-  const [showAuth, setShowAuth] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -116,36 +115,7 @@ function App() {
 
   return (
     <div className="app">
-      {/* Logo in top-left corner */}
-      <h1 className="title">aiprompts.my</h1>
-
       <div className="dashboard">
-        {/* Small corner login button */}
-        <div className="login-corner">
-          {authLoading ? (
-            <div className="auth-loading" style={{ fontSize: '0.8rem' }}>Loading...</div>
-          ) : user ? (
-            <div className="user-info" style={{ gap: '0.5rem' }}>
-              <span className="user-name" style={{ fontSize: '0.7rem' }}>
-                Hi, {user.displayName?.split(' ')[0] || user.email}
-              </span>
-              <button className="login-button-small" onClick={handleSignOut}>
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <button className="login-button-small" onClick={handleGoogleSignIn}>
-              Sign In
-            </button>
-          )}
-        </div>
-
-        {/* Data warning for non-logged in users */}
-        {!user && !authLoading && (
-          <div className="data-warning">
-            ⚠️ Sign in to save your data permanently
-          </div>
-        )}
 
         <div className="sidebar">
           <button className="new-note-button" onClick={createNewNote} style={{ marginBottom: '1rem', width: '100%' }}>
@@ -200,41 +170,42 @@ function App() {
 
       <footer className="footer">
         <div className="footer-content">
-          <div className="trust-section">
-            <div className="trust-item">
-              <span className="trust-icon">🔒</span>
-              <span className="trust-text">Secure & Private</span>
+          <div className="login-section">
+            {authLoading ? (
+              <div className="auth-loading" style={{ fontSize: '0.7rem' }}>Loading...</div>
+            ) : user ? (
+              <div className="user-info" style={{ gap: '0.3rem', alignItems: 'center' }}>
+                <span className="user-name" style={{ fontSize: '0.7rem' }}>
+                  {user.displayName?.split(' ')[0] || user.email?.split('@')[0]}
+                </span>
+                <button className="login-button-small" onClick={handleSignOut}>
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button className="login-button-small" onClick={handleGoogleSignIn}>
+                Sign In
+              </button>
+            )}
+          </div>
+
+          <div className="trust-messages">
+            <div className="trust-message">
+              <span className="trust-icon">🔐</span>
+              <span className="trust-text">100% Private - Your prompts stay with you</span>
             </div>
-            <div className="trust-item">
-              <span className="trust-icon">⚡</span>
-              <span className="trust-text">Fast & Reliable</span>
-            </div>
-            <div className="trust-item">
+            <div className="trust-message">
               <span className="trust-icon">🆓</span>
-              <span className="trust-text">Free to Use</span>
+              <span className="trust-text">Completely Free - No hidden fees or subscriptions</span>
+            </div>
+            <div className="trust-message">
+              <span className="trust-icon">🛡️</span>
+              <span className="trust-text">Enterprise-grade security for your data</span>
             </div>
           </div>
 
-          <div className="contact-section">
-            <div className="contact-item">
-              <span className="contact-label">Support:</span>
-              <a href="mailto:support@aiprompts.my" className="contact-link">
-                support@aiprompts.my
-              </a>
-            </div>
-            <div className="contact-item">
-              <span className="contact-label">Contact:</span>
-              <a href="mailto:hello@aiprompts.my" className="contact-link">
-                hello@aiprompts.my
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="copyright-strip">
-          <div className="lighting-animation"></div>
           <span className="copyright-text">
-            © 2025 aiprompts.my. All rights reserved.
+            © 2025 aiprompts.my
           </span>
         </div>
       </footer>
