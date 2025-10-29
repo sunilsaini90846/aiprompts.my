@@ -204,7 +204,7 @@ function App() {
             </div>
           </div>
 
-          <span className="copyright-text">
+          <span className="copyright-text" style={{ fontSize: '12px', color: 'white' }}>
             © 2025 aiprompts.my
           </span>
         </div>
