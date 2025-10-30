@@ -23,6 +23,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentNote, setCurrentNote] = useState<PromptNote | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     // Monitor authentication state
@@ -32,6 +33,19 @@ function App() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.sidebar-item-menu')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -66,6 +80,18 @@ function App() {
   };
 
   const createNewNote = () => {
+    // Check if there's already a blank note (empty title or only whitespace)
+    const existingBlankNote = promptNotes.find(note =>
+      !note.title || note.title.trim() === ''
+    );
+
+    if (existingBlankNote) {
+      // If blank note exists, switch to it instead of creating new one
+      setCurrentNote(existingBlankNote);
+      return;
+    }
+
+    // Create new blank note if no blank note exists
     const newNote: PromptNote = {
       id: Date.now().toString(),
       title: '',
@@ -73,6 +99,9 @@ function App() {
       createdAt: new Date(),
       updatedAt: new Date()
     };
+    const updatedNotes = [...promptNotes, newNote];
+    setPromptNotes(updatedNotes);
+    saveToStorage(updatedNotes);
     setCurrentNote(newNote);
   };
 
@@ -89,6 +118,43 @@ function App() {
     setPromptNotes(updatedNotes);
     saveToStorage(updatedNotes);
     setCurrentNote(null);
+  };
+
+  const deleteNote = (noteId: string) => {
+    const updatedNotes = promptNotes.filter(note => note.id !== noteId);
+    setPromptNotes(updatedNotes);
+    saveToStorage(updatedNotes);
+
+    // If the deleted note was currently selected, clear the selection
+    if (currentNote?.id === noteId) {
+      setCurrentNote(null);
+    }
+  };
+
+  const exportNote = (note: PromptNote) => {
+    // Create TXT format export
+    let txtContent = `${note.title || 'Untitled Note'}\n`;
+    txtContent += `Created: ${note.createdAt.toLocaleDateString()}\n`;
+    txtContent += `Updated: ${note.updatedAt.toLocaleDateString()}\n`;
+    txtContent += '='.repeat(50) + '\n\n';
+
+    note.prompts.forEach((prompt, index) => {
+      txtContent += `Prompt ${index + 1}: ${prompt.title || 'Untitled Prompt'}\n`;
+      txtContent += `Created: ${prompt.createdAt.toLocaleDateString()}\n\n`;
+      txtContent += `${prompt.content}\n\n`;
+      txtContent += '-'.repeat(30) + '\n\n';
+    });
+
+    const dataBlob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${note.title || 'note'}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const copyToClipboard = (text: string) => {
@@ -129,13 +195,54 @@ function App() {
               </div>
             ) : (
               promptNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className={`sidebar-item ${currentNote?.id === note.id ? 'active' : ''}`}
-                  onClick={() => setCurrentNote(note)}
-                >
-                  <h4>{note.title || 'Untitled'}</h4>
-                  <p>{note.prompts.length} prompt{note.prompts.length !== 1 ? 's' : ''}</p>
+                <div key={note.id} className="sidebar-item-container">
+                  <div
+                    className={`sidebar-item ${currentNote?.id === note.id ? 'active' : ''}`}
+                    onClick={() => setCurrentNote(note)}
+                  >
+                    <div className="sidebar-item-content">
+                      <h4>{note.title || 'Untitled'}</h4>
+                      <p>{note.prompts.length} prompt{note.prompts.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="sidebar-item-menu">
+                      <button
+                        className="menu-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === note.id ? null : note.id);
+                        }}
+                        title="More options"
+                      >
+                        ⋯
+                      </button>
+                      {openMenuId === note.id && (
+                        <div className="menu-dropdown">
+                          <button
+                            className="menu-item export-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportNote(note);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            📄 Export as TXT
+                          </button>
+                          <button
+                            className="menu-item delete-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Are you sure you want to delete this note?')) {
+                                deleteNote(note.id);
+                              }
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            🗑️ Delete Note
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -223,6 +330,12 @@ interface PromptEditorProps {
 function PromptEditor({ note, onSave, onCancel, onCopy }: PromptEditorProps) {
   const [title, setTitle] = useState(note.title);
   const [prompts, setPrompts] = useState<Prompt[]>(note.prompts);
+
+  // Update local state when note prop changes
+  useEffect(() => {
+    setTitle(note.title);
+    setPrompts(note.prompts);
+  }, [note]);
 
   const addPrompt = () => {
     const newPrompt: Prompt = {
